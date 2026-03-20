@@ -438,7 +438,7 @@ function calcMonth(dateStr){
 
 async function saveMo(){
   var d={date:$('mDt').value,desc:$('mDs').value,amount:$('mAm').value,cat:$('mCat').value,sub:$('mSub').value,method:$('mMet').value,tag:$('mTg').value,month:calcMonth($('mDt').value)};
-  if(!d.date||!d.desc||!d.amount||!d.cat||!d.sub){status('필수 항목을 모두 입력해!',1);return;}
+  if(!d.date||!d.desc||d.amount===''||!d.cat||!d.sub){status('필수 항목을 모두 입력해!',1);return;}
   closeMo();
   var ok;
   if(editRow){ok=await apiPost('update',{row:editRow,data:d});}
@@ -465,7 +465,7 @@ function closeRpMo(){$('rpMoBg').classList.remove('show');}
 
 async function saveRepeat(){
   var item={desc:$('rpDs').value.trim(),amount:Number($('rpAm').value)||0,cat:$('rpCat').value,sub:$('rpSub').value,method:$('rpMet').value,tag:$('rpTg').value,day:Number($('rpDay').value)||20};
-  if(!item.desc||!item.amount||!item.cat||!item.sub){status('필수 항목을 모두 입력해!',1);return;}
+  if(!item.desc||item.amount===''||!item.cat||!item.sub){status('필수 항목을 모두 입력해!',1);return;}
   closeRpMo();
   var ok;
   if(rpEditRow){ok=await apiPost('updateRepeat',{row:rpEditRow,data:item});}
