@@ -620,14 +620,17 @@ function parseImpFile(input){
 function processImpData(json){
   IMP_ROWS=[];
   json.forEach(function(row){
-    var desc=row['내용']||'';
+    var desc=(row['내용']||'').toString().trim();
     var amount=Number(row['KRW'])||Number(row['금액'])||0;
-    var type=row['수입/지출']||'';
-    var asset=row['자산']||'';
+    var type=(row['수입/지출']||'').toString().trim();
+    var asset=(row['자산']||'').toString().trim();
     var dateRaw=row['기간']||'';
     var dateStr='';
     if(dateRaw instanceof Date){
-      dateStr=dateRaw.toISOString().slice(0,10);
+      var yy=dateRaw.getFullYear();
+      var mm=String(dateRaw.getMonth()+1).padStart(2,'0');
+      var dd=String(dateRaw.getDate()).padStart(2,'0');
+      dateStr=yy+'-'+mm+'-'+dd;
     }else if(typeof dateRaw==='string'){
       dateStr=dateRaw.slice(0,10);
     }
@@ -640,7 +643,11 @@ function processImpData(json){
       if(d.date===dateStr&&d.amount===amount)isDup=true;
     });
     if(isDup)return;
-    var method=IMP_ASSET_MAP[asset]||'';
+    var method='';
+    var assetKeys=Object.keys(IMP_ASSET_MAP);
+    for(var k=0;k<assetKeys.length;k++){
+      if(asset.indexOf(assetKeys[k])>=0){method=IMP_ASSET_MAP[assetKeys[k]];break;}
+    }
     IMP_ROWS.push({date:dateStr,desc:desc,amount:amount,type:type,method:method,checked:true,cat:'',sub:'',tag:''});
   });
   renderImpPreview();
