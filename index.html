@@ -116,6 +116,7 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   <div class="ni-page on" onclick="goPage('list',this)">📋 내역 조회</div>
   <div class="ni-page" onclick="goPage('repeat',this)">🔄 반복 관리</div>
   <div class="ni-page" onclick="goPage('dash',this)">📊 통합 대시보드</div>
+  <div class="ni-page" onclick="goPage('asset',this)">💰 자산관리</div>
   <div class="ni-page" onclick="goPage('settings',this)">⚙️ 카테고리 설정</div>
   <div class="ns">대분류 필터</div>
   <div class="ni on" onclick="fc(this,'all')"><span>전체</span></div>
@@ -199,6 +200,26 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
       <div class="dash-card dash-full"><h4>대분류별 지출 금액</h4><div id="barChart"></div></div>
     </div>
   </div>
+<div class="page" id="pg-asset">
+  <div class="mh">
+    <h2>💰 자산관리</h2>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="astMo" onchange="renderAsset()" style="padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-size:12px">
+        <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+        <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+        <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+        <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+      </select>
+      <button class="btn btn-a" onclick="openAstAdd()">+ 항목 추가</button>
+      <button class="btn btn-p" onclick="autoFillAssets()">📥 전월 복사</button>
+    </div>
+  </div>
+  <div class="cds" id="astCards"></div>
+  <div class="dash-grid" style="margin-top:14px">
+    <div class="dash-card dash-full"><h4>월별 순자산 추이</h4><div class="chart-box"><canvas id="chNet"></canvas></div></div>
+  </div>
+  <div id="astTables"></div>
+</div>
 
   <div class="page" id="pg-settings">
     <div class="mh"><h2>⚙️ 카테고리 설정</h2></div>
@@ -267,6 +288,22 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
     </div>
   </div>
 </div>
+<div class="mo-bg" id="astMoBg">
+  <div class="mo">
+    <h3 id="astMoTitle">자산 항목 추가</h3>
+    <label>구분 *</label>
+    <select id="astGroup"><option value="부채">부채</option><option value="비유동자산">비유동자산</option><option value="유동자산">유동자산</option></select>
+    <label>종류 *</label><input type="text" id="astType" placeholder="예: 대출, 부동산, 저축">
+    <label>항목명 *</label><input type="text" id="astName" placeholder="예: 주택담보대출, 훈석청약">
+    <label>월 *</label><input type="number" id="astMonth" min="1" max="12">
+    <label>금액</label><input type="number" id="astAmount" placeholder="금액">
+    <label>매달 자동증가 (없으면 0)</label><input type="number" id="astAuto" value="0" placeholder="예: 100000">
+    <div class="acts">
+      <button class="btn btn-r" onclick="closeAstMo()">취소</button>
+      <button class="btn btn-p" onclick="saveAst()">저장</button>
+    </div>
+  </div>
+</div>
 
 <div class="stat" id="stat"></div>
 
@@ -330,6 +367,7 @@ function goPage(pg,el){
   if(pg==='dash')renderDash();
   if(pg==='settings')renderSettings();
   if(pg==='repeat')loadRepeats();
+    if(pg==='asset')loadAssets();
   closeMob();
 }
 
@@ -717,6 +755,135 @@ async function saveImpAll(){
 }
 
   
+  /* ═══ 자산관리 ═══ */
+var ASSETS=[];
+
+async function loadAssets(){
+  try{
+    var r=await fetch(API+'?action=readAsset');var j=await r.json();
+    if(j.ok){ASSETS=j.data;}else{status('자산 로드 실패',1);}
+  }catch(e){status('자산 통신 오류',1);}
+  renderAsset();
+}
+
+function renderAsset(){
+  var mo=Number($('astMo').value);
+  var moData=ASSETS.filter(function(a){return a.month===mo;});
+
+  var debt=0,nonCur=0,cur=0;
+  moData.forEach(function(a){
+    if(a.group==='부채')debt+=a.amount;
+    else if(a.group==='비유동자산')nonCur+=a.amount;
+    else if(a.group==='유동자산')cur+=a.amount;
+  });
+  var net=(nonCur+cur)-debt;
+
+  $('astCards').innerHTML=
+    '<div class="cd" style="border-left:4px solid var(--exp)"><div class="lb">부채</div><div class="vl" style="color:var(--exp)">'+fmt(debt)+'</div></div>'+
+    '<div class="cd" style="border-left:4px solid var(--p)"><div class="lb">비유동자산</div><div class="vl" style="color:var(--p)">'+fmt(nonCur)+'</div></div>'+
+    '<div class="cd" style="border-left:4px solid var(--sav)"><div class="lb">유동자산</div><div class="vl" style="color:var(--sav)">'+fmt(cur)+'</div></div>'+
+    '<div class="cd" style="border-left:4px solid var(--inc)"><div class="lb">순자산</div><div class="vl" style="color:'+(net>=0?'var(--inc)':'var(--exp)')+'">'+fmt(net)+'</div></div>';
+
+  var groups=['부채','비유동자산','유동자산'];
+  var colors={'부채':'var(--exp)','비유동자산':'var(--p)','유동자산':'var(--sav)'};
+  var h='';
+  groups.forEach(function(g){
+    var items=moData.filter(function(a){return a.group===g;});
+    if(!items.length)return;
+    h+='<div class="tw" style="margin-bottom:14px"><table><thead><tr><th style="background:'+colors[g]+'">'+g+'</th><th>종류</th><th>항목</th><th style="text-align:right">금액</th><th>자동증가</th><th></th></tr></thead><tbody>';
+    var sub=0;
+    items.forEach(function(a){
+      sub+=a.amount;
+      function esc(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+      h+='<tr><td></td><td>'+a.type+'</td><td>'+a.name+'</td><td class="amt" style="text-align:right">'+(a.amount||0).toLocaleString()+'</td><td>'+(a.auto?'+'+a.auto.toLocaleString()+'/월':'')+'</td>'+
+        '<td><button class="btn btn-p btn-sm" onclick="openAstEdit('+a._row+',\''+esc(a.group)+'\',\''+esc(a.type)+'\',\''+esc(a.name)+'\','+a.month+','+a.amount+','+a.auto+')">✏️</button> '+
+        '<button class="btn btn-d btn-sm" onclick="delAst('+a._row+',\''+esc(a.name)+'\')">🗑</button></td></tr>';
+    });
+    h+='<tr style="font-weight:700;background:#f8f9fa"><td colspan="3">소계</td><td class="amt" style="text-align:right">'+sub.toLocaleString()+'</td><td></td><td></td></tr>';
+    h+='</tbody></table></div>';
+  });
+  $('astTables').innerHTML=h||'<div style="text-align:center;padding:40px;color:var(--tl)">이 월에 데이터가 없어요. "+ 항목 추가" 버튼을 눌러봐!</div>';
+
+  renderNetChart();
+}
+
+function renderNetChart(){
+  var months=[1,2,3,4,5,6,7,8,9,10,11,12];
+  var labels=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  var netData=months.map(function(m){
+    var moD=ASSETS.filter(function(a){return a.month===m;});
+    if(!moD.length)return null;
+    var d=0,nc=0,c=0;
+    moD.forEach(function(a){
+      if(a.group==='부채')d+=a.amount;
+      else if(a.group==='비유동자산')nc+=a.amount;
+      else if(a.group==='유동자산')c+=a.amount;
+    });
+    return(nc+c)-d;
+  });
+
+  var existing=Chart.getChart('chNet');
+  if(existing)existing.destroy();
+
+  new Chart($('chNet'),{type:'line',data:{labels:labels,datasets:[{label:'순자산',data:netData,borderColor:'#27ae60',backgroundColor:'rgba(39,174,96,.1)',fill:true,tension:.3,spanGaps:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return Math.round(v/100000000)+'억';}}}}}});
+}
+
+var astEditRow=null;
+
+function openAstAdd(){
+  astEditRow=null;$('astMoTitle').textContent='자산 항목 추가';
+  $('astGroup').value='부채';$('astType').value='';$('astName').value='';
+  $('astMonth').value=$('astMo').value;$('astAmount').value='';$('astAuto').value='0';
+  $('astMoBg').classList.add('show');
+}
+
+function openAstEdit(row,group,type,name,month,amount,auto){
+  astEditRow=row;$('astMoTitle').textContent='자산 항목 수정';
+  $('astGroup').value=group;$('astType').value=type;$('astName').value=name;
+  $('astMonth').value=month;$('astAmount').value=amount;$('astAuto').value=auto;
+  $('astMoBg').classList.add('show');
+}
+
+function closeAstMo(){$('astMoBg').classList.remove('show');}
+
+async function saveAst(){
+  var d={group:$('astGroup').value,type:$('astType').value.trim(),name:$('astName').value.trim(),month:Number($('astMonth').value),amount:Number($('astAmount').value)||0,auto:Number($('astAuto').value)||0};
+  if(!d.type||!d.name||!d.month){status('필수 항목을 입력해!',1);return;}
+  closeAstMo();
+  var ok;
+  if(astEditRow){ok=await apiPost('updateAsset',{row:astEditRow,data:d});}
+  else{ok=await apiPost('addAsset',d);}
+  if(ok)await loadAssets();
+}
+
+async function delAst(row,name){
+  if(!confirm('"'+name+'" 삭제?'))return;
+  var ok=await apiPost('deleteAsset',{row:row});
+  if(ok)await loadAssets();
+}
+
+async function autoFillAssets(){
+  var mo=Number($('astMo').value);
+  var prevMo=mo-1;
+  if(prevMo<1){status('1월은 자동채우기 불가!',1);return;}
+  var prevData=ASSETS.filter(function(a){return a.month===prevMo;});
+  var curData=ASSETS.filter(function(a){return a.month===mo;});
+  if(!prevData.length){status((prevMo)+'월 데이터가 없어!',1);return;}
+  if(curData.length){if(!confirm(mo+'월에 이미 데이터가 있어. 덮어쓸까?'))return;}
+
+  var rows=prevData.map(function(a){
+    var amt=a.amount+(a.auto||0);
+    return{group:a.group,type:a.type,name:a.name,month:mo,amount:amt,auto:a.auto||0};
+  });
+
+  status('자동채우기 중...');
+  for(var i=0;i<rows.length;i++){
+    await apiPost('addAsset',rows[i]);
+  }
+  await loadAssets();
+  status(mo+'월 자동채우기 완료!');
+}
+
 load();
 </script>
 </body>
