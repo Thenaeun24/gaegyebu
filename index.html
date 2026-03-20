@@ -334,18 +334,16 @@ function buildNav(){
   const rate=inc>0?((sav/inc)*100).toFixed(1):0;
   $('si').textContent=fmtS(inc);$('ss').textContent=fmtS(sav);$('se').textContent=fmtS(exp);$('sr').textContent=rate+'%';
 }
-function fc(el,cat){document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));el.classList.add('on');curCat=cat;rf();render();clfunction fc(el,cat){
+function fc(el,cat){
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   el.classList.add('on');
   curCat=cat;rf();
-  // 어느 페이지에 있든 내역 조회로 자동 이동
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('show'));
   $('pg-list').classList.add('show');
   document.querySelectorAll('.ni-page').forEach(n=>n.classList.remove('on'));
   document.querySelector('.ni-page').classList.add('on');
   render();closeMob();
 }
-oseMob();}
 
 // ═══ 필터 & 렌더 ═══
 function render(){
