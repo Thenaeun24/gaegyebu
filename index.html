@@ -211,10 +211,7 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 <div class="mo-bg" id="moBg">
   <div class="mo">
     <h3 id="moTitle">새 내역 추가</h3>
-    <div class="row2">
-      <div><label>날짜 *</label><input type="date" id="mDt"></div>
-      <div><label>월 (1st=1, 2nd=2...)</label><input type="number" id="mMo" min="1" max="12"></div>
-    </div>
+    <div><label>날짜 *</label><input type="date" id="mDt"></div>
     <label>내용 *</label><input type="text" id="mDs" placeholder="내용">
     <label>금액 *</label><input type="number" id="mAm" placeholder="금액">
     <div class="row2">
@@ -432,8 +429,15 @@ function openEdit(row,date,desc,amount,cat,sub,method,tag,month){
   $('moBg').classList.add('show');
 }
 function closeMo(){$('moBg').classList.remove('show');}
+function calcMonth(dateStr){
+  var parts=dateStr.split('-');
+  var m=Number(parts[1]),d=Number(parts[2]);
+  if(d>=20) return m;
+  return m===1?12:m-1;
+}
+
 async function saveMo(){
-  var d={date:$('mDt').value,desc:$('mDs').value,amount:$('mAm').value,cat:$('mCat').value,sub:$('mSub').value,method:$('mMet').value,tag:$('mTg').value,month:$('mMo').value};
+  var d={date:$('mDt').value,desc:$('mDs').value,amount:$('mAm').value,cat:$('mCat').value,sub:$('mSub').value,method:$('mMet').value,tag:$('mTg').value,month:calcMonth($('mDt').value)};
   if(!d.date||!d.desc||!d.amount||!d.cat||!d.sub){status('필수 항목을 모두 입력해!',1);return;}
   closeMo();
   var ok;
