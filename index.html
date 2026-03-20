@@ -104,7 +104,7 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 <aside class="sb" id="sb">
   <div class="sb-head">
     <h1>🐶 강쥐들의 가계부</h1>
-    <div class="per">2026/1/20 ~ 2027/1/19</div>
+    <div class="per" id="perYear"></div>
   </div>
   <div class="sbox">
     <div class="r"><span>총 수입</span><span style="color:#2ecc71" id="si">-</span></div>
@@ -185,7 +185,7 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   </div>
 
   <div class="page" id="pg-dash">
-    <div class="mh"><h2>📊 2026 통합 대시보드</h2></div>
+    <h2 id="dashTitle">📊 통합 대시보드</h2>
     <div class="cds">
       <div class="cd inc"><div class="lb">총 수입</div><div class="vl" id="di">-</div></div>
       <div class="cd sav"><div class="lb">총 저축</div><div class="vl" id="ds">-</div></div>
@@ -327,6 +327,15 @@ function fmt(n){return(n||0).toLocaleString('ko-KR')+'원';}
 function fmtS(n){n=n||0;if(n>=1e7)return(n/1e7).toFixed(1)+'천만';if(n>=1e4)return Math.round(n/1e4)+'만';return n.toLocaleString();}
 function $(id){return document.getElementById(id);}
 function status(msg,err){var el=$('stat');el.textContent=msg;el.className='stat show'+(err?' err':'');setTimeout(function(){el.classList.remove('show');},2500);}
+function getYear(){
+  var now=new Date();
+  var y=now.getFullYear();
+  var m=now.getMonth()+1;
+  var d=now.getDate();
+  if(m===1&&d<20)y=y-1;
+  return y;
+}
+var CUR_YEAR=getYear();
 
 async function load(){
   $('ldEl').style.display='block';$('tw').style.display='none';
@@ -356,7 +365,11 @@ async function apiPost(action,body){
   }catch(e){status('통신 오류',1);return false;}
 }
 
-function init(){buildMtabs();buildNav();buildSelects();render();renderSettings();}
+function init(){
+  $('perYear').textContent=CUR_YEAR+'/1/20 ~ '+(CUR_YEAR+1)+'/1/19';
+  $('dashTitle').textContent='📊 '+CUR_YEAR+' 통합 대시보드';
+  buildMtabs();buildNav();buildSelects();render();renderSettings();
+}
 
 function goPage(pg,el){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show');});
@@ -559,7 +572,7 @@ async function bulkAddRepeat(){
   var mo=Number($('rpMo').value);
   var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
   if(!confirm(lb[mo]+' 월에 '+REPEATS.length+'개 항목을 일괄 추가할까?'))return;
-  var year=2026;var startMonth=mo;if(mo>=12)startMonth=12;
+  var year=CUR_YEAR;var startMonth=mo;if(mo>=12){startMonth=12;year=CUR_YEAR+1;}
   var rows=REPEATS.map(function(r){
     var day=r.day||20;var mm=String(startMonth).padStart(2,'0');var dd=String(day).padStart(2,'0');
     return{date:year+'-'+mm+'-'+dd,desc:r.desc,amount:r.amount,cat:r.cat,sub:r.sub,method:r.method||'',tag:r.tag||'',month:mo};
