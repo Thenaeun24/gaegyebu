@@ -870,18 +870,13 @@ async function autoFillAssets(){
   var curData=ASSETS.filter(function(a){return a.month===mo;});
   if(!prevData.length){status((prevMo)+'월 데이터가 없어!',1);return;}
   if(curData.length){if(!confirm(mo+'월에 이미 데이터가 있어. 덮어쓸까?'))return;}
-
   var rows=prevData.map(function(a){
     var amt=a.amount+(a.auto||0);
     return{group:a.group,type:a.type,name:a.name,month:mo,amount:amt,auto:a.auto||0};
   });
-
-  status('자동채우기 중...');
-  for(var i=0;i<rows.length;i++){
-    await apiPost('addAsset',rows[i]);
-  }
-  await loadAssets();
-  status(mo+'월 자동채우기 완료!');
+  status('자동채우기 중... ('+rows.length+'건)');
+  var ok=await apiPost('bulkAddAsset',{rows:rows});
+  if(ok)await loadAssets();
 }
 
 load();
