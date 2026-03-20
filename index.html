@@ -135,6 +135,23 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
         <span class="bdg" id="cnt">0건</span>
       </div>
     </div>
+    <div id="budgetBar" style="background:linear-gradient(135deg,#2c3e50,#34495e);color:#fff;border-radius:9px;padding:14px 18px;margin-bottom:14px;display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span style="font-size:13px;font-weight:700" id="budgetTitle">이번 달 사용 가능 금액</span>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+    <span>설정: <span id="budgetTotal">0원</span></span>
+    <span>지출: <span id="budgetUsed">0원</span></span>
+  </div>
+  <div style="background:rgba(255,255,255,.15);border-radius:4px;height:14px;overflow:hidden;margin-bottom:6px">
+    <div id="budgetFill" style="height:100%;border-radius:4px;transition:width .5s"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:16px;font-weight:700" id="budgetLeft">0원</span>
+    <span style="font-size:10px;opacity:.7" id="budgetPct">0% 사용</span>
+  </div>
+</div>
     <div class="mtabs" id="mtabs"></div>
     <div class="cds">
       <div class="cd inc"><div class="lb">수입</div><div class="vl" id="ci">-</div></div>
@@ -305,6 +322,25 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   </div>
 </div>
 
+  <div class="mo-bg" id="budgetMoBg">
+  <div class="mo">
+    <h3>이번 달 사용 가능 금액 설정</h3>
+    <label>월 선택</label>
+    <select id="budgetMo">
+      <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option>
+      <option value="4">4th</option><option value="5">5th</option><option value="6">6th</option>
+      <option value="7">7th</option><option value="8">8th</option><option value="9">9th</option>
+      <option value="10">10th</option><option value="11">11th</option><option value="12">12th</option>
+    </select>
+    <label>사용 가능 금액</label>
+    <input type="number" id="budgetAmt" placeholder="예: 2000000">
+    <div class="acts">
+      <button class="btn btn-r" onclick="closeBudgetMo()">취소</button>
+      <button class="btn btn-p" onclick="saveBudget()">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="stat" id="stat"></div>
 
 <script>
@@ -336,6 +372,11 @@ function getYear(){
   return y;
 }
 var CUR_YEAR=getYear();
+  function getCurMonth(){
+  var now=new Date();var m=now.getMonth()+1;var d=now.getDate();
+  return d>=20?m:(m===1?12:m-1);
+}
+var CUR_MONTH=getCurMonth();
 
 async function load(){
   $('ldEl').style.display='block';$('tw').style.display='none';
@@ -365,10 +406,15 @@ async function apiPost(action,body){
   }catch(e){status('통신 오류',1);return false;}
 }
 
-function init(){
+async function init(){
   $('perYear').textContent=CUR_YEAR+'/1/20 ~ '+(CUR_YEAR+1)+'/1/19';
   $('dashTitle').textContent='📊 '+CUR_YEAR+' 통합 대시보드';
+  curMo=CUR_MONTH;
+  $('astMo').value=CUR_MONTH;
   buildMtabs();buildNav();buildSelects();render();renderSettings();
+  await loadBudgetData();
+  renderBudget();
+}
 }
 
 function goPage(pg,el){
@@ -380,7 +426,7 @@ function goPage(pg,el){
   if(pg==='dash')renderDash();
   if(pg==='settings')renderSettings();
   if(pg==='repeat')loadRepeats();
-    if(pg==='asset')loadAssets();
+      if(pg==='asset'){$('astMo').value=CUR_MONTH;loadAssets();}
   closeMob();
 }
 
@@ -392,7 +438,7 @@ function buildMtabs(){
   ms.forEach(function(m){h+='<button class="mtab '+(curMo===m?'on':'')+'" onclick="setMo(this,'+m+')">'+(lb[m]||m)+'</button>';});
   $('mtabs').innerHTML=h;
 }
-function setMo(el,m){document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');curMo=m;buildNav();render();}
+function setMo(el,m){document.querySelectorAll('.mtab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');curMo=m;buildNav();render();renderBudget();}
 function gm(){return curMo===0?DATA:DATA.filter(function(d){return d.month==curMo;});}
 
 function buildNav(){
@@ -890,6 +936,71 @@ async function autoFillAssets(){
   status('자동채우기 중... ('+rows.length+'건)');
   var ok=await apiPost('bulkAddAsset',{rows:rows});
   if(ok)await loadAssets();
+}
+  /* ═══ 예산 관리 ═══ */
+var BUDGET_CATS=['고정지출','저축','용돈','수입'];
+var BUDGET_DATA={};
+
+async function loadBudgetData(){
+  try{
+    var r=await fetch(API+'?action=readBudget');var j=await r.json();
+    if(j.ok){
+      BUDGET_DATA={};
+      j.data.forEach(function(b){BUDGET_DATA[b.month]=b.amount;});
+    }
+  }catch(e){}
+}
+
+function renderBudget(){
+  var mo=curMo;
+  if(mo===0){
+    var now=new Date();var m=now.getMonth()+1;var d=now.getDate();
+    mo=d>=20?m:(m===1?12:m-1);
+  }
+  var total=BUDGET_DATA[mo]||0;
+  var bar=$('budgetBar');
+  if(!total){bar.style.display='none';return;}
+  bar.style.display='block';
+  var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
+  $('budgetTitle').textContent=(lb[mo]||mo)+' 사용 가능 금액';
+  var moData=DATA.filter(function(r){return r.month==mo;});
+  var used=moData.filter(function(r){return BUDGET_CATS.indexOf(r.cat)<0;}).reduce(function(s,r){return s+r.amount;},0);
+  var left=total-used;
+  var pct=total>0?Math.round(used/total*100):0;
+  $('budgetTotal').textContent=fmt(total);
+  $('budgetUsed').textContent=fmt(used);
+  $('budgetLeft').textContent=fmt(left);
+  $('budgetPct').textContent=pct+'% 사용';
+  var fill=$('budgetFill');
+  fill.style.width=Math.min(pct,100)+'%';
+  if(pct<=60)fill.style.background='#2ecc71';
+  else if(pct<=85)fill.style.background='#f39c12';
+  else fill.style.background='#e74c3c';
+  if(left<0)$('budgetLeft').style.color='#e74c3c';
+  else $('budgetLeft').style.color='#2ecc71';
+}
+
+function openBudgetSet(){
+  var mo=curMo;
+  if(mo===0){
+    var now=new Date();var m=now.getMonth()+1;var d=now.getDate();
+    mo=d>=20?m:(m===1?12:m-1);
+  }
+  $('budgetMo').value=mo;
+  $('budgetAmt').value=BUDGET_DATA[mo]||'';
+  $('budgetMoBg').classList.add('show');
+}
+function closeBudgetMo(){$('budgetMoBg').classList.remove('show');}
+
+async function saveBudget(){
+  var mo=Number($('budgetMo').value);
+  var amt=Number($('budgetAmt').value)||0;
+  closeBudgetMo();
+  var ok=await apiPost('saveBudget',{month:mo,amount:amt});
+  if(ok){
+    BUDGET_DATA[mo]=amt;
+    renderBudget();
+  }
 }
 
 load();
