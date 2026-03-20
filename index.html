@@ -379,13 +379,24 @@ var CUR_YEAR=getYear();
 var CUR_MONTH=getCurMonth();
 
 async function load(){
-  $('ldEl').style.display='block';$('tw').style.display='none';
+  var cached=localStorage.getItem('dataCache');
+  if(cached){
+    try{DATA=JSON.parse(cached);$('ldEl').style.display='none';$('tw').style.display='block';init();}catch(e){}
+  }else{
+    $('ldEl').style.display='block';$('tw').style.display='none';
+  }
   try{
     var r=await fetch(API+'?action=read');var j=await r.json();
-    if(j.ok){DATA=j.data;}else{status('로드 실패: '+j.error,1);}
-  }catch(e){status('오프라인 모드',1);}
-  $('ldEl').style.display='none';$('tw').style.display='block';
-  init();
+    if(j.ok){
+      DATA=j.data;
+      localStorage.setItem('dataCache',JSON.stringify(DATA));
+      $('ldEl').style.display='none';$('tw').style.display='block';
+      init();
+    }else{status('로드 실패: '+j.error,1);}
+  }catch(e){
+    if(!cached)status('오프라인 모드',1);
+    $('ldEl').style.display='none';$('tw').style.display='block';
+  }
 }
 
 async function loadRepeats(){
