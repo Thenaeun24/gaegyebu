@@ -418,7 +418,7 @@ function updRpSub(){var cat=$('rpCat').value;$('rpSub').innerHTML=(CATS[cat]||[]
 function openAdd(){
   editRow=null;$('moTitle').textContent='새 내역 추가';
   $('mDt').value=new Date().toISOString().slice(0,10);
-  $('mDs').value='';$('mAm').value='';$('mMo').value='';
+  $('mDs').value='';$('mAm').value='';
   $('mCat').value=Object.keys(CATS)[0];updSub();$('mTg').value='';
   $('moBg').classList.add('show');
 }
