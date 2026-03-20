@@ -308,6 +308,7 @@ function goPage(pg,el){
   $('pg-'+pg).classList.add('show');
   document.querySelectorAll('.ni-page').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
+  if(pg==='list'){curCat='all';rf();buildNav();render();document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});var allNi=document.querySelector('.ni');if(allNi)allNi.classList.add('on');}
   if(pg==='dash')renderDash();
   if(pg==='settings')renderSettings();
   if(pg==='repeat')loadRepeats();
