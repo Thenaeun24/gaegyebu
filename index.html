@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🐶 강쥐들의 가계부</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 :root{--p:#4a6fa5;--pl:#6b8fc4;--ac:#e8913a;--bg:#f5f7fa;--c:#fff;--t:#2c3e50;--tl:#7f8c8d;--inc:#27ae60;--exp:#e74c3c;--sav:#3498db;--bd:#e0e6ed;--sw:255px}
@@ -127,7 +128,9 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
     <div class="mh">
       <h2 id="pt">전체 내역</h2>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn btn-a" onclick="openAdd()">+ 추가</button>
+        <button class="btn btn-p" onclick="openImpMo()" style="font-size:10px">📤 불러오기</button>
+<button class="btn btn-a" onclick="openAdd()">+ 추가</button>
+
         <span class="bdg" id="cnt">0건</span>
       </div>
     </div>
@@ -246,6 +249,21 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
     <div class="acts">
       <button class="btn btn-r" onclick="closeRpMo()">취소</button>
       <button class="btn btn-p" onclick="saveRepeat()">저장</button>
+    </div>
+  </div>
+</div>
+  
+<!-- 불러오기 모달 -->
+<div class="mo-bg" id="impMoBg">
+  <div class="mo" style="max-width:700px;max-height:90vh">
+    <h3>📤 편한가계부 불러오기</h3>
+    <p style="font-size:11px;color:var(--tl);margin-bottom:10px">편한가계부 엑셀 파일을 선택하면 내용+금액을 가져와요.<br>대분류/소분류/결제수단/태그를 선택한 후 체크한 항목만 저장됩니다.</p>
+    <input type="file" id="impFile" accept=".xlsx,.xls,.csv" onchange="parseImpFile(this)" style="margin-bottom:12px;font-size:12px">
+    <div id="impPreview" style="max-height:55vh;overflow-y:auto"></div>
+    <div class="acts" style="margin-top:12px">
+      <span id="impCnt" style="font-size:11px;color:var(--tl);margin-right:auto"></span>
+      <button class="btn btn-r" onclick="closeImpMo()">취소</button>
+      <button class="btn btn-p" onclick="saveImpAll()">선택 항목 저장</button>
     </div>
   </div>
 </div>
@@ -575,6 +593,123 @@ function resetCfg(){if(!confirm('기본값으로 초기화?'))return;CATS=JSON.p
 function togSb(){$('sb').classList.toggle('open');$('ov').classList.toggle('show');}
 function closeMob(){if(window.innerWidth<=768){$('sb').classList.remove('open');$('ov').classList.remove('show');}}
 
+  /* ═══ 편한가계부 불러오기 ═══ */
+var IMP_ROWS=[];
+var IMP_ASSET_MAP={'신한카드':'딥오일카드','하나카드':'체크카드','KB국민카드 쿠팡':'kb쿠팡카드','현금':'현금','훈석':'훈이지카드'};
+var IMP_EXCLUDE=['나은 고정 지출','훈석이 고정 지출','각자 용돈','나은 고정지출','훈석이 고정지출'];
+
+function openImpMo(){IMP_ROWS=[];$('impFile').value='';$('impPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">엑셀 파일을 선택해주세요</div>';$('impCnt').textContent='';$('impMoBg').classList.add('show');}
+function closeImpMo(){$('impMoBg').classList.remove('show');}
+
+function parseImpFile(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=new Uint8Array(e.target.result);
+      var wb=XLSX.read(data,{type:'array',cellDates:true});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var json=XLSX.utils.sheet_to_json(ws,{defval:''});
+      processImpData(json);
+    }catch(err){status('파일 읽기 실패: '+err.message,1);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processImpData(json){
+  IMP_ROWS=[];
+  json.forEach(function(row){
+    var desc=row['내용']||'';
+    var amount=Number(row['KRW'])||Number(row['금액'])||0;
+    var type=row['수입/지출']||'';
+    var asset=row['자산']||'';
+    var dateRaw=row['기간']||'';
+    var dateStr='';
+    if(dateRaw instanceof Date){
+      dateStr=dateRaw.toISOString().slice(0,10);
+    }else if(typeof dateRaw==='string'){
+      dateStr=dateRaw.slice(0,10);
+    }
+    if(!desc||!dateStr)return;
+    var excluded=false;
+    IMP_EXCLUDE.forEach(function(ex){if(desc.indexOf(ex)>=0)excluded=true;});
+    if(excluded)return;
+    var isDup=false;
+    DATA.forEach(function(d){
+      if(d.date===dateStr&&d.amount===amount)isDup=true;
+    });
+    if(isDup)return;
+    var method=IMP_ASSET_MAP[asset]||'';
+    IMP_ROWS.push({date:dateStr,desc:desc,amount:amount,type:type,method:method,checked:true,cat:'',sub:'',tag:''});
+  });
+  renderImpPreview();
+}
+
+function renderImpPreview(){
+  if(!IMP_ROWS.length){$('impPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">새로 추가할 항목이 없어요!<br>(이미 등록된 내역이거나 고정지출입니다)</div>';$('impCnt').textContent='0건';return;}
+  var catOpts=Object.keys(CATS).map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join('');
+  var metOpts=METHODS.map(function(m){return'<option value="'+m+'"'+(m?'':' selected')+'>'+m+'</option>';}).join('');
+  var tagOpts=TAGS.map(function(t){return'<option value="'+t+'">'+(t||'없음')+'</option>';}).join('');
+  var h='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--p);color:#fff"><th style="padding:5px"><input type="checkbox" checked onchange="impToggleAll(this)"></th><th style="padding:5px">날짜</th><th style="padding:5px">내용</th><th style="padding:5px;text-align:right">금액</th><th style="padding:5px">대분류</th><th style="padding:5px">소분류</th><th style="padding:5px">결제수단</th><th style="padding:5px">태그</th></tr></thead><tbody>';
+  IMP_ROWS.forEach(function(r,i){
+    var subOpts='';
+    if(r.cat&&CATS[r.cat]){subOpts=CATS[r.cat].map(function(s){return'<option>'+s+'</option>';}).join('');}
+    h+='<tr style="border-bottom:1px solid var(--bd)">'+
+      '<td style="padding:4px;text-align:center"><input type="checkbox" '+(r.checked?'checked':'')+' onchange="IMP_ROWS['+i+'].checked=this.checked;updImpCnt()"></td>'+
+      '<td style="padding:4px">'+r.date.slice(5)+'</td>'+
+      '<td style="padding:4px">'+r.desc+'</td>'+
+      '<td style="padding:4px;text-align:right;font-weight:600">'+(r.amount||0).toLocaleString()+'</td>'+
+      '<td style="padding:4px"><select style="width:70px;font-size:10px;padding:2px" onchange="impCatChg('+i+',this.value)">'+
+        '<option value="">선택</option>'+catOpts+'</select></td>'+
+      '<td style="padding:4px"><select id="impSub'+i+'" style="width:70px;font-size:10px;padding:2px" onchange="IMP_ROWS['+i+'].sub=this.value">'+subOpts+'</select></td>'+
+      '<td style="padding:4px"><select style="width:75px;font-size:10px;padding:2px" onchange="IMP_ROWS['+i+'].method=this.value">'+
+        metOpts.replace('value="'+r.method+'"','value="'+r.method+'" selected')+'</select></td>'+
+      '<td style="padding:4px"><select style="width:55px;font-size:10px;padding:2px" onchange="IMP_ROWS['+i+'].tag=this.value">'+tagOpts+'</select></td>'+
+    '</tr>';
+  });
+  h+='</tbody></table>';
+  $('impPreview').innerHTML=h;
+  updImpCnt();
+}
+
+function impCatChg(i,cat){
+  IMP_ROWS[i].cat=cat;
+  var subSel=$('impSub'+i);
+  if(cat&&CATS[cat]){
+    subSel.innerHTML=CATS[cat].map(function(s){return'<option>'+s+'</option>';}).join('');
+    IMP_ROWS[i].sub=CATS[cat][0]||'';
+  }else{
+    subSel.innerHTML='';
+    IMP_ROWS[i].sub='';
+  }
+}
+
+function impToggleAll(cb){
+  IMP_ROWS.forEach(function(r,i){r.checked=cb.checked;});
+  var boxes=$('impPreview').querySelectorAll('input[type=checkbox]');
+  boxes.forEach(function(b){b.checked=cb.checked;});
+  updImpCnt();
+}
+
+function updImpCnt(){
+  var cnt=IMP_ROWS.filter(function(r){return r.checked;}).length;
+  $('impCnt').textContent=cnt+'건 선택됨';
+}
+
+async function saveImpAll(){
+  var rows=IMP_ROWS.filter(function(r){return r.checked&&r.cat&&r.sub;});
+  if(!rows.length){status('대분류/소분류를 선택한 항목이 없어!',1);return;}
+  var sendRows=rows.map(function(r){
+    return{date:r.date,desc:r.desc,amount:r.amount,cat:r.cat,sub:r.sub,method:r.method||'',tag:r.tag||'',month:calcMonth(r.date)};
+  });
+  closeImpMo();
+  status('불러오기 중... ('+sendRows.length+'건)');
+  var ok=await apiPost('bulk',{rows:sendRows});
+  if(ok)await load();
+}
+
+  
 load();
 </script>
 </body>
