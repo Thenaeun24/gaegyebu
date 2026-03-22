@@ -300,11 +300,11 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 <div class="mo-bg" id="impMoBg">
   <div class="mo" style="max-width:700px;max-height:90vh">
     <h3>📤 편한가계부 불러오기</h3>
-    <p style="font-size:11px;color:var(--tl);margin-bottom:10px">편한가계부 엑셀 파일을 선택하면 내용+금액을 가져와요.<br>대분류/소분류/결제수단/태그를 선택한 후 체크한 항목만 저장됩니다.</p>
+    <p style="font-size:12.5px;color:var(--tl);margin-bottom:10px">편한가계부 엑셀 파일을 선택하면 내용+금액을 가져와요.<br>대분류/소분류/결제수단/태그를 선택한 후 체크한 항목만 저장됩니다.</p>
     <input type="file" id="impFile" accept=".xlsx,.xls,.csv" onchange="parseImpFile(this)" style="margin-bottom:12px;font-size:12px">
     <div id="impPreview" style="max-height:55vh;overflow-y:auto"></div>
     <div class="acts" style="margin-top:12px">
-      <span id="impCnt" style="font-size:11px;color:var(--tl);margin-right:auto"></span>
+      <span id="impCnt" style="font-size:12.5px;color:var(--tl);margin-right:auto"></span>
       <button class="btn btn-r" onclick="closeImpMo()">취소</button>
       <button class="btn btn-p" onclick="saveImpAll()">선택 항목 저장</button>
     </div>
@@ -770,7 +770,7 @@ function renderImpPreview(){
   var catOpts=Object.keys(CATS).map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join('');
   var metOpts=METHODS.map(function(m){return'<option value="'+m+'"'+(m?'':' selected')+'>'+m+'</option>';}).join('');
   var tagOpts=TAGS.map(function(t){return'<option value="'+t+'">'+(t||'없음')+'</option>';}).join('');
-  var h='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--p);color:#fff"><th style="padding:5px"><input type="checkbox" checked onchange="impToggleAll(this)"></th><th style="padding:5px">날짜</th><th style="padding:5px">내용</th><th style="padding:5px;text-align:right">금액</th><th style="padding:5px">대분류</th><th style="padding:5px">소분류</th><th style="padding:5px">결제수단</th><th style="padding:5px">태그</th></tr></thead><tbody>';
+  var h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--p);color:#fff"><th style="padding:5px"><input type="checkbox" checked onchange="impToggleAll(this)"></th><th style="padding:5px">날짜</th><th style="padding:5px">내용</th><th style="padding:5px;text-align:right">금액</th><th style="padding:5px">대분류</th><th style="padding:5px">소분류</th><th style="padding:5px">결제수단</th><th style="padding:5px">태그</th></tr></thead><tbody>';
   IMP_ROWS.forEach(function(r,i){
     var subOpts='';
     if(r.cat&&CATS[r.cat]){subOpts=CATS[r.cat].map(function(s){return'<option>'+s+'</option>';}).join('');}
@@ -974,8 +974,12 @@ function renderBudget(){
   }
   var total=BUDGET_DATA[mo]||0;
   var bar=$('budgetBar');
-  if(!total){bar.style.display='block';bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;opacity:.7">이번 달 예산을 설정해보세요!</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div>';return;}
   bar.style.display='block';
+  if(!total){
+    bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;opacity:.7">이번 달 예산을 설정해보세요!</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div>';
+    return;
+  }
+  bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700" id="budgetTitle">이번 달 사용 가능 금액</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>설정: <span id="budgetTotal">0원</span></span><span>지출: <span id="budgetUsed">0원</span></span></div><div style="background:rgba(255,255,255,.15);border-radius:4px;height:14px;overflow:hidden;margin-bottom:6px"><div id="budgetFill" style="height:100%;border-radius:4px;transition:width .5s"></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:700" id="budgetLeft">0원</span><span style="font-size:10px;opacity:.7" id="budgetPct">0% 사용</span></div>';
   var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
   $('budgetTitle').textContent=(lb[mo]||mo)+' 사용 가능 금액';
   var moData=DATA.filter(function(r){return r.month==mo;});
