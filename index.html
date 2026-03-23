@@ -957,11 +957,17 @@ var BUDGET_CATS=['고정지출','저축','용돈','수입'];
 var BUDGET_DATA={};
 
 async function loadBudgetData(){
+  var cached=localStorage.getItem('budgetCache');
+  if(cached){
+    try{BUDGET_DATA=JSON.parse(cached);renderBudget();}catch(e){}
+  }
   try{
     var r=await fetch(API+'?action=readBudget');var j=await r.json();
     if(j.ok){
       BUDGET_DATA={};
       j.data.forEach(function(b){BUDGET_DATA[b.month]=b.amount;});
+      localStorage.setItem('budgetCache',JSON.stringify(BUDGET_DATA));
+      renderBudget();
     }
   }catch(e){}
 }
@@ -1018,6 +1024,7 @@ async function saveBudget(){
   var ok=await apiPost('saveBudget',{month:mo,amount:amt});
   if(ok){
     BUDGET_DATA[mo]=amt;
+    localStorage.setItem('budgetCache',JSON.stringify(BUDGET_DATA));
     renderBudget();
   }
 }
