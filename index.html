@@ -448,7 +448,7 @@ function goPage(pg,el){
 function buildMtabs(){
   var ms=[];var seen={};DATA.forEach(function(d){if(d.month&&!seen[d.month]){seen[d.month]=1;ms.push(d.month);}});
   ms.sort(function(a,b){return a-b;});
-  var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
+  var lb={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
   var h='<button class="mtab '+(curMo===0?'on':'')+'" onclick="setMo(this,0)">전체</button>';
   ms.forEach(function(m){h+='<button class="mtab '+(curMo===m?'on':'')+'" onclick="setMo(this,'+m+')">'+(lb[m]||m)+'</button>';});
   $('mtabs').innerHTML=h;
@@ -631,7 +631,7 @@ function renderRepeat(){
 async function bulkAddRepeat(){
   if(!REPEATS.length){status('등록된 반복 항목이 없어!',1);return;}
   var mo=Number($('rpMo').value);
-  var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
+  var lb={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
   if(!confirm(lb[mo]+' 월에 '+REPEATS.length+'개 항목을 일괄 추가할까?'))return;
   var year=CUR_YEAR;var startMonth=mo;if(mo>=12){startMonth=12;year=CUR_YEAR+1;}
   var rows=REPEATS.map(function(r){
@@ -653,7 +653,7 @@ function renderDash(){
   $('dr').textContent=(inc>0?((sav/inc)*100).toFixed(1):0)+'%';
   var months=[];var seen={};d.forEach(function(r){if(r.month&&!seen[r.month]){seen[r.month]=1;months.push(r.month);}});
   months.sort(function(a,b){return a-b;});
-  var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
+  var lb={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
   var labels=months.map(function(m){return lb[m]||m;});
   var mInc=months.map(function(m){return d.filter(function(r){return r.month==m&&r.cat==='수입';}).reduce(function(s,r){return s+r.amount;},0);});
   var mSav=months.map(function(m){return d.filter(function(r){return r.month==m&&r.cat==='저축';}).reduce(function(s,r){return s+r.amount;},0);});
@@ -986,7 +986,7 @@ function renderBudget(){
     return;
   }
   bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700" id="budgetTitle">이번 달 사용 가능 금액</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>설정: <span id="budgetTotal">0원</span></span><span>지출: <span id="budgetUsed">0원</span></span></div><div style="background:rgba(255,255,255,.15);border-radius:4px;height:14px;overflow:hidden;margin-bottom:6px"><div id="budgetFill" style="height:100%;border-radius:4px;transition:width .5s"></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:700" id="budgetLeft">0원</span><span style="font-size:10px;opacity:.7" id="budgetPct">0% 사용</span></div>';
-  var lb={1:'1st',2:'2nd',3:'3rd',4:'4th',5:'5th',6:'6th',7:'7th',8:'8th',9:'9th',10:'10th',11:'11th',12:'12th'};
+  var lb={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
   $('budgetTitle').textContent=(lb[mo]||mo)+' 사용 가능 금액';
   var moData=DATA.filter(function(r){return r.month==mo;});
   var used=moData.filter(function(r){return BUDGET_CATS.indexOf(r.cat)<0;}).reduce(function(s,r){return s+r.amount;},0);
