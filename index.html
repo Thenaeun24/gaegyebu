@@ -572,10 +572,11 @@ async function saveMo(){
   var d={date:$('mDt').value,desc:$('mDs').value,amount:$('mAm').value,cat:$('mCat').value,sub:$('mSub').value,method:$('mMet').value,tag:$('mTg').value,month:calcMonth($('mDt').value)};
   if(!d.date||!d.desc||d.amount===''||!d.cat||!d.sub){status('필수 항목을 모두 입력해!',1);return;}
   closeMo();
+  var savedMonth=d.month;
   var ok;
   if(editRow){ok=await apiPost('update',{row:editRow,data:d});}
   else{ok=await apiPost('add',d);}
-  if(ok)await load();
+  if(ok){curMo=savedMonth;await load();}
 }
 async function del(row){if(!confirm('정말 삭제할까?'))return;var ok=await apiPost('delete',{row:row});if(ok)await load();}
 
