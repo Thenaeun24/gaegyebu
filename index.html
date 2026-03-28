@@ -426,7 +426,7 @@ async function apiPost(action,body){
 async function init(){
   $('perYear').textContent=CUR_YEAR+'/1/20 ~ '+(CUR_YEAR+1)+'/1/19';
   $('dashTitle').textContent='📊 '+CUR_YEAR+' 통합 대시보드';
-  curMo=CUR_MONTH;
+  if(!curMo)curMo=CUR_MONTH;
   $('astMo').value=CUR_MONTH;
   buildMtabs();buildNav();buildSelects();render();renderSettings();
   await loadBudgetData();
