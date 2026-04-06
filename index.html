@@ -852,11 +852,12 @@ function processImpData(json){
     IMP_ROWS.push({date:p.date,desc:p.desc,amount:p.amount,type:p.type,method:method,checked:true,cat:'',sub:'',tag:''});
   });
   if(allParsed.length){
-    var dates=allParsed.map(function(p){return p.date;}).sort();
-    var minDate=dates[0],maxDate=dates[dates.length-1];
+    var moSet={};
+    allParsed.forEach(function(p){moSet[calcMonth(p.date)]=true;});
+    var DEL_SKIP_CATS={'수입':1,'저축':1,'고정지출':1,'용돈':1};
     DATA.forEach(function(d){
-      if(!d.date||d.date<minDate||d.date>maxDate)return;
-      if(d.cat==='수입'||d.cat==='저축')return;
+      if(!d.date||!moSet[d.month])return;
+      if(DEL_SKIP_CATS[d.cat])return;
       var excl=false;IMP_EXCLUDE.forEach(function(ex){if((d.desc||'').indexOf(ex)>=0)excl=true;});
       if(excl)return;
       var key=d.date+'|'+d.amount+'|'+(d.desc||'');
