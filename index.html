@@ -857,6 +857,8 @@ function processImpData(json){
     DATA.forEach(function(d){
       if(!d.date||d.date<minDate||d.date>maxDate)return;
       if(d.cat==='수입'||d.cat==='저축')return;
+      var excl=false;IMP_EXCLUDE.forEach(function(ex){if((d.desc||'').indexOf(ex)>=0)excl=true;});
+      if(excl)return;
       var key=d.date+'|'+d.amount+'|'+(d.desc||'');
       if(!excelSet[key]){
         DEL_ROWS.push({_key:d._key,date:d.date,desc:d.desc||'',amount:d.amount,cat:d.cat,sub:d.sub||'',checked:false});
