@@ -857,12 +857,12 @@ function processImpData(json){
   if(allParsed.length){
     var dates=allParsed.map(function(p){return p.date;}).sort();
     var minDate=dates[0],maxDate=dates[dates.length-1];
-    console.log('delRange:', minDate, '~', maxDate);
+    var excelMo=calcMonth(allParsed[0].date);
+    console.log('delRange:', minDate, '~', maxDate, 'excelMo:', excelMo);
     var DEL_SKIP_CATS={'수입':1,'저축':1,'고정지출':1,'용돈':1};
     DATA.forEach(function(d){
       if(!d.date||d.date<minDate||d.date>maxDate)return;
-      var day=Number(d.date.split('-')[2]);
-      if(day<20)return;
+      if(calcMonth(d.date)!==excelMo)return;
       if(DEL_SKIP_CATS[d.cat])return;
       var excl=false;IMP_EXCLUDE.forEach(function(ex){if((d.desc||'').indexOf(ex)>=0)excl=true;});
       if(excl)return;
