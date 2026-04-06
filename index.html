@@ -304,11 +304,17 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
     <h3>📤 편한가계부 불러오기</h3>
     <p style="font-size:12.5px;color:var(--tl);margin-bottom:10px">편한가계부 엑셀 파일을 선택하면 내용+금액을 가져와요.<br>대분류/소분류/결제수단/태그를 선택한 후 체크한 항목만 저장됩니다.</p>
     <input type="file" id="impFile" accept=".xlsx,.xls,.csv" onchange="parseImpFile(this)" style="margin-bottom:12px;font-size:12px">
-    <div id="impPreview" style="max-height:55vh;overflow-y:auto"></div>
+    <div id="impTabs" style="display:none;gap:6px;margin-bottom:10px">
+      <button class="mtab on" id="impTabAdd" onclick="switchImpTab('add')">📥 새로 추가 (0건)</button>
+      <button class="mtab" id="impTabDel" onclick="switchImpTab('del')">🗑 삭제 후보 (0건)</button>
+    </div>
+    <div id="impAddPreview" style="max-height:55vh;overflow-y:auto"></div>
+    <div id="impDelPreview" style="max-height:55vh;overflow-y:auto;display:none"></div>
     <div class="acts" style="margin-top:12px">
       <span id="impCnt" style="font-size:12.5px;color:var(--tl);margin-right:auto"></span>
       <button class="btn btn-r" onclick="closeImpMo()">취소</button>
-      <button class="btn btn-p" onclick="saveImpAll()">선택 항목 저장</button>
+      <button class="btn btn-p" id="impBtnSave" onclick="saveImpAll()">선택 항목 저장</button>
+      <button class="btn btn-d" id="impBtnDel" onclick="delImpAll()" style="display:none">선택 항목 삭제</button>
     </div>
   </div>
 </div>
@@ -765,12 +771,33 @@ function togSb(){$('sb').classList.toggle('open');$('ov').classList.toggle('show
 function closeMob(){if(window.innerWidth<=768){$('sb').classList.remove('open');$('ov').classList.remove('show');}}
 
 /* ═══ 편한가계부 불러오기 ═══ */
-var IMP_ROWS=[];
+var IMP_ROWS=[],DEL_ROWS=[],impCurTab='add';
 var IMP_ASSET_MAP={'신한카드':'딥오일카드','하나카드':'체크카드','KB국민카드 쿠팡':'kb쿠팡카드','현금':'현금','훈석':'훈이지카드'};
 var IMP_EXCLUDE=['나은 고정 지출','훈석이 고정 지출','각자 용돈','나은 고정지출','훈석이 고정지출'];
 
-function openImpMo(){IMP_ROWS=[];$('impFile').value='';$('impPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">엑셀 파일을 선택해주세요</div>';$('impCnt').textContent='';$('impMoBg').classList.add('show');}
+function openImpMo(){
+  IMP_ROWS=[];DEL_ROWS=[];impCurTab='add';
+  $('impFile').value='';
+  $('impTabs').style.display='none';
+  $('impAddPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">엑셀 파일을 선택해주세요</div>';
+  $('impDelPreview').innerHTML='';$('impDelPreview').style.display='none';
+  $('impAddPreview').style.display='block';
+  $('impBtnSave').style.display='';$('impBtnDel').style.display='none';
+  $('impCnt').textContent='';
+  $('impMoBg').classList.add('show');
+}
 function closeImpMo(){$('impMoBg').classList.remove('show');}
+
+function switchImpTab(tab){
+  impCurTab=tab;
+  $('impTabAdd').className='mtab'+(tab==='add'?' on':'');
+  $('impTabDel').className='mtab'+(tab==='del'?' on':'');
+  $('impAddPreview').style.display=tab==='add'?'block':'none';
+  $('impDelPreview').style.display=tab==='del'?'block':'none';
+  $('impBtnSave').style.display=tab==='add'?'':'none';
+  $('impBtnDel').style.display=tab==='del'?'':'none';
+  if(tab==='add')updImpCnt();else updDelCnt();
+}
 
 function parseImpFile(input){
   if(!input.files||!input.files[0])return;
@@ -788,38 +815,64 @@ function parseImpFile(input){
   reader.readAsArrayBuffer(file);
 }
 
+function parseImpDate(raw){
+  if(raw instanceof Date){
+    var yy=raw.getFullYear();var mm=String(raw.getMonth()+1).padStart(2,'0');var dd=String(raw.getDate()).padStart(2,'0');
+    return yy+'-'+mm+'-'+dd;
+  }
+  if(typeof raw==='string')return raw.slice(0,10);
+  return '';
+}
+
 function processImpData(json){
-  IMP_ROWS=[];
+  IMP_ROWS=[];DEL_ROWS=[];
+  var allParsed=[],excelSet={};
   json.forEach(function(row){
     var desc=(row['내용']||'').toString().trim();
     var amount=Number(row['KRW'])||Number(row['금액'])||0;
-    var type=(row['수입/지출']||'').toString().trim();
     var asset=(row['자산']||'').toString().trim();
-    var dateRaw=row['기간']||'';
-    var dateStr='';
-    if(dateRaw instanceof Date){
-      var yy=dateRaw.getFullYear();var mm=String(dateRaw.getMonth()+1).padStart(2,'0');var dd=String(dateRaw.getDate()).padStart(2,'0');
-      dateStr=yy+'-'+mm+'-'+dd;
-    }else if(typeof dateRaw==='string'){dateStr=dateRaw.slice(0,10);}
+    var type=(row['수입/지출']||'').toString().trim();
+    var dateStr=parseImpDate(row['기간']||'');
     if(!desc||!dateStr)return;
+    allParsed.push({date:dateStr,desc:desc,amount:amount,type:type,asset:asset});
+    excelSet[dateStr+'|'+amount+'|'+desc]=true;
+  });
+  allParsed.forEach(function(p){
     var excluded=false;
-    IMP_EXCLUDE.forEach(function(ex){if(desc.indexOf(ex)>=0)excluded=true;});
+    IMP_EXCLUDE.forEach(function(ex){if(p.desc.indexOf(ex)>=0)excluded=true;});
     if(excluded)return;
     var isDup=false;
-    DATA.forEach(function(d){if(d.date===dateStr&&d.amount===amount)isDup=true;});
+    DATA.forEach(function(d){if(d.date===p.date&&d.amount===p.amount&&(d.desc||'')===p.desc)isDup=true;});
     if(isDup)return;
     var method='';
     var assetKeys=Object.keys(IMP_ASSET_MAP);
     for(var k=0;k<assetKeys.length;k++){
-      if(asset.indexOf(assetKeys[k])>=0){method=IMP_ASSET_MAP[assetKeys[k]];break;}
+      if(p.asset.indexOf(assetKeys[k])>=0){method=IMP_ASSET_MAP[assetKeys[k]];break;}
     }
-    IMP_ROWS.push({date:dateStr,desc:desc,amount:amount,type:type,method:method,checked:true,cat:'',sub:'',tag:''});
+    IMP_ROWS.push({date:p.date,desc:p.desc,amount:p.amount,type:p.type,method:method,checked:true,cat:'',sub:'',tag:''});
   });
+  if(allParsed.length){
+    var dates=allParsed.map(function(p){return p.date;}).sort();
+    var minDate=dates[0],maxDate=dates[dates.length-1];
+    DATA.forEach(function(d){
+      if(!d.date||d.date<minDate||d.date>maxDate)return;
+      if(d.cat==='수입'||d.cat==='저축')return;
+      var key=d.date+'|'+d.amount+'|'+(d.desc||'');
+      if(!excelSet[key]){
+        DEL_ROWS.push({_key:d._key,date:d.date,desc:d.desc||'',amount:d.amount,cat:d.cat,sub:d.sub||'',checked:false});
+      }
+    });
+  }
+  $('impTabs').style.display='flex';
+  $('impTabAdd').textContent='📥 새로 추가 ('+IMP_ROWS.length+'건)';
+  $('impTabDel').textContent='🗑 삭제 후보 ('+DEL_ROWS.length+'건)';
+  switchImpTab('add');
   renderImpPreview();
+  renderDelPreview();
 }
 
 function renderImpPreview(){
-  if(!IMP_ROWS.length){$('impPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">새로 추가할 항목이 없어요!<br>(이미 등록된 내역이거나 고정지출입니다)</div>';$('impCnt').textContent='0건';return;}
+  if(!IMP_ROWS.length){$('impAddPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">새로 추가할 항목이 없어요!<br>(이미 등록된 내역이거나 고정지출입니다)</div>';$('impCnt').textContent='0건';return;}
   var catOpts=Object.keys(CATS).map(function(c){return'<option value="'+c+'">'+c+'</option>';}).join('');
   var metOpts=METHODS.map(function(m){return'<option value="'+m+'"'+(m?'':' selected')+'>'+m+'</option>';}).join('');
   var tagOpts=TAGS.map(function(t){return'<option value="'+t+'">'+(t||'없음')+'</option>';}).join('');
@@ -841,8 +894,25 @@ function renderImpPreview(){
     '</tr>';
   });
   h+='</tbody></table>';
-  $('impPreview').innerHTML=h;
+  $('impAddPreview').innerHTML=h;
   updImpCnt();
+}
+
+function renderDelPreview(){
+  if(!DEL_ROWS.length){$('impDelPreview').innerHTML='<div style="text-align:center;padding:30px;color:var(--tl)">삭제 후보가 없어요!</div>';return;}
+  var h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:#e74c3c;color:#fff"><th style="padding:5px"><input type="checkbox" onchange="delToggleAll(this)"></th><th style="padding:5px">날짜</th><th style="padding:5px">내용</th><th style="padding:5px;text-align:right">금액</th><th style="padding:5px">대분류</th><th style="padding:5px">소분류</th></tr></thead><tbody>';
+  DEL_ROWS.forEach(function(r,i){
+    h+='<tr style="border-bottom:1px solid var(--bd);background:#fff5f5">'+
+      '<td style="padding:4px;text-align:center"><input type="checkbox" '+(r.checked?'checked':'')+' onchange="DEL_ROWS['+i+'].checked=this.checked;updDelCnt()"></td>'+
+      '<td style="padding:4px">'+r.date.slice(5)+'</td>'+
+      '<td style="padding:4px">'+r.desc+'</td>'+
+      '<td style="padding:4px;text-align:right;font-weight:600">'+(r.amount||0).toLocaleString()+'</td>'+
+      '<td style="padding:4px">'+r.cat+'</td>'+
+      '<td style="padding:4px">'+r.sub+'</td>'+
+    '</tr>';
+  });
+  h+='</tbody></table>';
+  $('impDelPreview').innerHTML=h;
 }
 
 function impCatChg(i,cat){
@@ -853,10 +923,17 @@ function impCatChg(i,cat){
 }
 function impToggleAll(cb){
   IMP_ROWS.forEach(function(r){r.checked=cb.checked;});
-  $('impPreview').querySelectorAll('input[type=checkbox]').forEach(function(b){b.checked=cb.checked;});
+  $('impAddPreview').querySelectorAll('tbody input[type=checkbox]').forEach(function(b){b.checked=cb.checked;});
   updImpCnt();
 }
 function updImpCnt(){$('impCnt').textContent=IMP_ROWS.filter(function(r){return r.checked;}).length+'건 선택됨';}
+
+function delToggleAll(cb){
+  DEL_ROWS.forEach(function(r){r.checked=cb.checked;});
+  $('impDelPreview').querySelectorAll('tbody input[type=checkbox]').forEach(function(b){b.checked=cb.checked;});
+  updDelCnt();
+}
+function updDelCnt(){$('impCnt').textContent=DEL_ROWS.filter(function(r){return r.checked;}).length+'건 선택됨';}
 
 async function saveImpAll(){
   var rows=IMP_ROWS.filter(function(r){return r.checked&&r.cat&&r.sub;});
@@ -870,6 +947,18 @@ async function saveImpAll(){
   });
   try{await refData.update(updates);status('불러오기 완료!');}
   catch(e){status('불러오기 실패',1);}
+}
+
+async function delImpAll(){
+  var rows=DEL_ROWS.filter(function(r){return r.checked;});
+  if(!rows.length){status('삭제할 항목을 선택해!',1);return;}
+  if(!confirm(rows.length+'건을 정말 삭제할까? 이 작업은 되돌릴 수 없어!'))return;
+  closeImpMo();
+  status('삭제 중... ('+rows.length+'건)');
+  var updates={};
+  rows.forEach(function(r){updates[r._key]=null;});
+  try{await refData.update(updates);status('삭제 완료! ('+rows.length+'건)');}
+  catch(e){status('삭제 실패',1);}
 }
 
 /* ═══ 자산관리 ═══ */
