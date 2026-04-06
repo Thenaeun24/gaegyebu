@@ -854,6 +854,7 @@ function processImpData(json){
   if(allParsed.length){
     var moSet={};
     allParsed.forEach(function(p){moSet[calcMonth(p.date)]=true;});
+    console.log('moSet:', JSON.stringify(moSet));
     var DEL_SKIP_CATS={'수입':1,'저축':1,'고정지출':1,'용돈':1};
     DATA.forEach(function(d){
       if(!d.date||!moSet[d.month])return;
@@ -862,6 +863,7 @@ function processImpData(json){
       if(excl)return;
       var key=d.date+'|'+d.amount+'|'+(d.desc||'');
       if(!excelSet[key]){
+        console.log('DEL candidate:', d.date, d.month, d.desc);
         DEL_ROWS.push({_key:d._key,date:d.date,desc:d.desc||'',amount:d.amount,cat:d.cat,sub:d.sub||'',checked:false});
       }
     });
