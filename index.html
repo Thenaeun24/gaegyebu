@@ -835,7 +835,10 @@ function processImpData(json){
     var dateStr=parseImpDate(row['기간']||'');
     if(!desc||!dateStr)return;
     allParsed.push({date:dateStr,desc:desc,amount:amount,type:type,asset:asset});
-    excelSet[dateStr+'|'+amount+'|'+desc]=true;
+    var skip=false;
+    if(type==='수입')skip=true;
+    IMP_EXCLUDE.forEach(function(ex){if(desc.indexOf(ex)>=0)skip=true;});
+    if(!skip)excelSet[dateStr+'|'+amount+'|'+desc]=true;
   });
   allParsed.forEach(function(p){
     var excluded=false;
@@ -852,12 +855,14 @@ function processImpData(json){
     IMP_ROWS.push({date:p.date,desc:p.desc,amount:p.amount,type:p.type,method:method,checked:true,cat:'',sub:'',tag:''});
   });
   if(allParsed.length){
-    var moSet={};
-    allParsed.forEach(function(p){moSet[calcMonth(p.date)]=true;});
-    console.log('moSet:', JSON.stringify(moSet));
+    var dates=allParsed.map(function(p){return p.date;}).sort();
+    var minDate=dates[0],maxDate=dates[dates.length-1];
+    console.log('delRange:', minDate, '~', maxDate);
     var DEL_SKIP_CATS={'수입':1,'저축':1,'고정지출':1,'용돈':1};
     DATA.forEach(function(d){
-      if(!d.date||!moSet[d.month])return;
+      if(!d.date||d.date<minDate||d.date>maxDate)return;
+      var day=Number(d.date.split('-')[2]);
+      if(day<20)return;
       if(DEL_SKIP_CATS[d.cat])return;
       var excl=false;IMP_EXCLUDE.forEach(function(ex){if((d.desc||'').indexOf(ex)>=0)excl=true;});
       if(excl)return;
