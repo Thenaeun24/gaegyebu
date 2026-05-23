@@ -1104,14 +1104,17 @@ function renderBudget(){
     bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;opacity:.7">이번 달 예산을 설정해보세요!</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div>';
     return;
   }
-  bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700" id="budgetTitle">이번 달 사용 가능 금액</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>설정: <span id="budgetTotal">0원</span></span><span>지출: <span id="budgetUsed">0원</span></span></div><div style="background:rgba(255,255,255,.15);border-radius:4px;height:14px;overflow:hidden;margin-bottom:6px"><div id="budgetFill" style="height:100%;border-radius:4px;transition:width .5s"></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:700" id="budgetLeft">0원</span><span style="font-size:10px;opacity:.7" id="budgetPct">0% 사용</span></div>';
+  bar.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700" id="budgetTitle">이번 달 사용 가능 금액</span><button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="openBudgetSet()">설정</button></div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px"><span>설정: <span id="budgetTotal">0원</span></span><span>수입: <span id="budgetInc">0원</span></span><span>지출: <span id="budgetUsed">0원</span></span></div><div style="background:rgba(255,255,255,.15);border-radius:4px;height:14px;overflow:hidden;margin-bottom:6px"><div id="budgetFill" style="height:100%;border-radius:4px;transition:width .5s"></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:16px;font-weight:700" id="budgetLeft">0원</span><span style="font-size:10px;opacity:.7" id="budgetPct">0% 사용</span></div>';
   var lb={1:'1월',2:'2월',3:'3월',4:'4월',5:'5월',6:'6월',7:'7월',8:'8월',9:'9월',10:'10월',11:'11월',12:'12월'};
   $('budgetTitle').textContent=(lb[mo]||mo)+' 사용 가능 금액';
   var moData=DATA.filter(function(r){return r.month==mo;});
+  var inc=moData.filter(function(r){return r.cat==='수입';}).reduce(function(s,r){return s+r.amount;},0);
   var used=moData.filter(function(r){return BUDGET_CATS.indexOf(r.cat)<0;}).reduce(function(s,r){return s+r.amount;},0);
-  var left=total-used;
-  var pct=total>0?Math.round(used/total*100):0;
+  var avail=total+inc;
+  var left=avail-used;
+  var pct=avail>0?Math.round(used/avail*100):0;
   $('budgetTotal').textContent=fmt(total);
+  $('budgetInc').textContent=fmt(inc);
   $('budgetUsed').textContent=fmt(used);
   $('budgetLeft').textContent=fmt(left);
   $('budgetPct').textContent=pct+'% 사용';
