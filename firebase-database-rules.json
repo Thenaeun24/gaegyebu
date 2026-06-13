@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "household": {
+      ".read": "auth != null && (auth.token.email === 'cuucuu877@gmail.com' || root.child('allowedEmails').child(auth.token.email.replace('.', ',')).val() === true)",
+      ".write": "auth != null && (auth.token.email === 'cuucuu877@gmail.com' || root.child('allowedEmails').child(auth.token.email.replace('.', ',')).val() === true)"
+    },
+    "allowedEmails": {
+      ".read": "auth != null && auth.token.email === 'cuucuu877@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'cuucuu877@gmail.com'",
+      "$emailKey": {
+        ".read": "auth != null && ($emailKey === auth.token.email.replace('.', ',') || auth.token.email === 'cuucuu877@gmail.com')"
+      }
+    }
+  }
+}
