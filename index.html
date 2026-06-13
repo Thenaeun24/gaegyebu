@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 :root{--p:#4a6fa5;--pl:#6b8fc4;--ac:#e8913a;--bg:#f5f7fa;--c:#fff;--t:#2c3e50;--tl:#7f8c8d;--inc:#27ae60;--exp:#e74c3c;--sav:#3498db;--bd:#e0e6ed;--sw:255px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -103,9 +104,53 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 #setCats input,#setEtc input{font-size:12.5px}
 #setCats h4,#setEtc h4{font-size:15px}
 @media(max-width:480px){.cds{grid-template-columns:1fr}}
+/* ═══ 로그인 게이트 ═══ */
+#authGate{position:fixed;inset:0;z-index:500;background:linear-gradient(160deg,#2c3e50,#34495e);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px;color:#ecf0f1}
+#authGate.hide{display:none}
+#authGate .ag-logo{font-size:54px;margin-bottom:6px}
+#authGate h2{font-size:22px;margin-bottom:6px}
+#authGate p{font-size:13px;color:#bdc7d1;margin-bottom:26px;line-height:1.6}
+.gbtn{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#3c4043;border:none;border-radius:8px;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:opacity .15s}
+.gbtn:hover{opacity:.9}
+.gbtn img{width:20px;height:20px}
+#authGate .ag-msg{margin-top:18px;font-size:13px;min-height:18px}
+#authGate .ag-sub{margin-top:14px;font-size:12px;color:#95a5a6;text-decoration:underline;cursor:pointer;background:none;border:none}
+.userbox{padding:8px 16px;font-size:11px;color:#bdc7d1;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px}
+.userbox .uemail{color:#ecf0f1;word-break:break-all}
+.logoutbtn{background:rgba(255,255,255,.1);color:#ecf0f1;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer}
+.logoutbtn:hover{background:rgba(255,255,255,.2)}
 </style>
 </head>
 <body>
+
+<!-- ═══ 로그인 게이트 ═══ -->
+<div id="authGate">
+  <div class="ag-logo">🐶</div>
+  <h2>강쥐들의 가계부</h2>
+  <p>허락된 구글 계정만 들어올 수 있어요.<br>본인 구글 계정으로 로그인해 주세요.</p>
+  <button class="gbtn" id="googleLoginBtn" onclick="doGoogleLogin()">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+    구글 계정으로 로그인
+  </button>
+  <div class="ag-msg" id="authMsg"></div>
+  <button class="ag-sub" id="authSwitchBtn" onclick="doLogout()" style="display:none">다른 계정으로 로그인</button>
+</div>
+
+<!-- ═══ 사용자 관리 (주인장 전용) ═══ -->
+<div class="mo-bg" id="userMoBg">
+  <div class="mo">
+    <h3>👥 사용자 관리</h3>
+    <p style="font-size:12.5px;color:var(--tl);margin-bottom:10px">여기에 등록된 구글 이메일만 가계부에 들어올 수 있어요. 추가하면 그 사람은 구글 로그인 후 바로 사용 가능해요.</p>
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      <input type="email" id="newUserEmail" placeholder="추가할 구글 이메일 (예: name@gmail.com)" style="flex:1" onkeydown="if(event.key==='Enter')addAllowedUser()">
+      <button class="btn btn-p" onclick="addAllowedUser()">추가</button>
+    </div>
+    <div id="userList" style="max-height:50vh;overflow-y:auto"></div>
+    <div class="acts" style="margin-top:14px">
+      <button class="btn btn-r" onclick="closeUserMo()">닫기</button>
+    </div>
+  </div>
+</div>
 
 <button class="hb" onclick="togSb()">☰</button>
 <div class="ov" id="ov" onclick="togSb()"></div>
@@ -128,9 +173,14 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   <div class="ni-page" onclick="goPage('dash',this)">📊 통합 대시보드</div>
   <div class="ni-page" onclick="goPage('asset',this)">💰 자산관리</div>
   <div class="ni-page" onclick="goPage('settings',this)">⚙️ 카테고리 설정</div>
+  <div class="ni-page" id="userMenuItem" style="display:none" onclick="openUserMo()">👥 사용자 관리</div>
   <div class="ns">대분류 필터</div>
   <div class="ni on" onclick="fc(this,'all')"><span>전체</span></div>
   <div id="nav-cats"></div>
+  <div class="userbox" id="userBox" style="display:none">
+    <span class="uemail" id="curUserEmail"></span>
+    <button class="logoutbtn" onclick="doLogout()">🚪 로그아웃</button>
+  </div>
 </aside>
 
 <main class="mn">
@@ -377,6 +427,59 @@ var refRepeats=db.ref('household/repeats');
 var refAssets=db.ref('household/assets');
 var refBudget=db.ref('household/budget');
 
+/* ═══ 로그인(인증) 설정 ═══ */
+var OWNER_EMAIL='cuucuu877@gmail.com';          // 주인장(관리자) 계정
+var auth=firebase.auth();
+var refAllowed=db.ref('allowedEmails');         // 허용된 이메일 명단(금고 안에 저장)
+var CUR_USER=null;                              // 현재 로그인한 사용자
+var IS_OWNER=false;
+var listenersStarted=false;
+function emailKey(e){return String(e).toLowerCase().trim().replace(/\./g,',');}  // 이메일을 DB 키로 변환
+
+function doGoogleLogin(){
+  var provider=new firebase.auth.GoogleAuthProvider();
+  $('authMsg').textContent='로그인 창을 여는 중...';
+  auth.signInWithPopup(provider).catch(function(err){
+    if(err&&err.code==='auth/popup-blocked'){auth.signInWithRedirect(provider);return;}
+    $('authMsg').textContent='로그인에 실패했어요: '+(err&&err.message?err.message:err);
+  });
+}
+function doLogout(){auth.signOut();}
+
+auth.onAuthStateChanged(function(user){
+  var gate=$('authGate');
+  if(!user){
+    CUR_USER=null;IS_OWNER=false;
+    gate.classList.remove('hide');
+    $('googleLoginBtn').style.display='';
+    $('authSwitchBtn').style.display='none';
+    $('authMsg').textContent='';
+    return;
+  }
+  // 로그인은 됨 → 허용된 사람인지 확인
+  CUR_USER=user;
+  IS_OWNER=(user.email&&user.email.toLowerCase()===OWNER_EMAIL);
+  $('authMsg').textContent=user.email+' 확인 중...';
+  var checkAllowed=IS_OWNER
+    ? Promise.resolve(true)
+    : refAllowed.child(emailKey(user.email)).once('value').then(function(s){return s.val()===true;}).catch(function(){return false;});
+  checkAllowed.then(function(ok){
+    if(!ok){
+      // 로그인은 했지만 허용 명단에 없음
+      $('googleLoginBtn').style.display='none';
+      $('authSwitchBtn').style.display='';
+      $('authMsg').innerHTML='⛔ <b>'+user.email+'</b> 계정은 접근 권한이 없어요.<br>주인장에게 등록을 요청하세요.';
+      return;
+    }
+    // 통과! 앱 보여주기
+    gate.classList.add('hide');
+    $('curUserEmail').textContent=user.email+(IS_OWNER?' (주인장)':'');
+    $('userBox').style.display='flex';
+    $('userMenuItem').style.display=IS_OWNER?'flex':'none';
+    startDataListeners();
+  });
+});
+
 /* ═══ 기본 설정 ═══ */
 var DEFAULT_CATS={'수입':['월급','상여금','부수입','용돈'],'저축':['적금','예금','시드머니','대출상환','비상금'],'고정지출':['대출이자','보험료','통신비'],'식비':['마트','편의점','식당','카페','배달'],'용돈':['나은용돈','훈석용돈'],'생활용품':['생필품/소모품','수리비','수수료'],'의복/미용':['의류','뷰티','헤어'],'교통':['대중교통','주유비','공임비','주차비','세차비','통행료','대리비','보험료 등'],'건강':['병원/약국','영양제','운동'],'자기계발':['강의','책','응시료 등'],'오락':['여행','문화'],'기타':['경조사','ott','게임','기타','회식비','멤버십'],'관리비':['관리비','가스비'],'효도':['부모님'],'육아비':['분유','기저귀','의류','소모품']};
 var DEFAULT_METHODS=['현금','딥오일카드','체크카드','훈이지카드','kb쿠팡카드'];
@@ -418,7 +521,10 @@ db.ref('.info/connected').on('value',function(snap){
   else{el.innerHTML='🔴 오프라인';el.style.color='#e74c3c';}
 });
 
-/* ═══ Firebase 실시간 리스너 ═══ */
+/* ═══ Firebase 실시간 리스너 (로그인 통과 후 시작) ═══ */
+function startDataListeners(){
+  if(listenersStarted)return;
+  listenersStarted=true;
 refData.on('value',function(snapshot){
   DATA=[];
   if(snapshot.exists()){
@@ -480,6 +586,48 @@ refAssets.on('value',function(snapshot){
   }
   renderAsset();
 });
+}
+
+/* ═══ 사용자 관리 (주인장 전용) ═══ */
+function openUserMo(){
+  if(!IS_OWNER){status('권한이 없어요',1);return;}
+  $('userMoBg').classList.add('show');
+  closeMob();
+  renderUserList();
+}
+function closeUserMo(){$('userMoBg').classList.remove('show');}
+function renderUserList(){
+  refAllowed.once('value').then(function(snap){
+    var h='';
+    var ownerRow='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid var(--bd)">'+
+      '<span>'+OWNER_EMAIL+' <span style="color:var(--p);font-size:11px">(주인장 · 항상 허용)</span></span></div>';
+    if(snap.exists()){
+      snap.forEach(function(child){
+        var info=child.val();
+        var email=(info&&info.email)?info.email:String(child.key).replace(/,/g,'.');
+        h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid var(--bd)">'+
+          '<span style="word-break:break-all">'+email+'</span>'+
+          '<button class="btn btn-d btn-sm" onclick="removeAllowedUser(\''+child.key+'\',\''+email+'\')">삭제</button></div>';
+      });
+    }
+    $('userList').innerHTML=ownerRow+(h||'<p style="color:var(--tl);font-size:12px;padding:10px 4px">아직 추가된 사용자가 없어요.</p>');
+  }).catch(function(){status('명단을 불러오지 못했어요',1);});
+}
+function addAllowedUser(){
+  if(!IS_OWNER){status('권한이 없어요',1);return;}
+  var raw=$('newUserEmail').value;
+  var email=String(raw).toLowerCase().trim();
+  if(!email||email.indexOf('@')<0){status('올바른 이메일을 입력하세요',1);return;}
+  if(email===OWNER_EMAIL){status('이미 주인장 계정이에요',1);return;}
+  refAllowed.child(emailKey(email)).set({email:email,addedAt:Date.now()}).then(function(){
+    $('newUserEmail').value='';status('추가 완료! '+email);renderUserList();
+  }).catch(function(){status('추가 실패',1);});
+}
+function removeAllowedUser(key,email){
+  if(!IS_OWNER){status('권한이 없어요',1);return;}
+  if(!confirm(email+' 님을 명단에서 삭제할까요?\n삭제 후엔 더 이상 가계부에 들어올 수 없어요.'))return;
+  refAllowed.child(key).remove().then(function(){status('삭제 완료');renderUserList();}).catch(function(){status('삭제 실패',1);});
+}
 
 /* ═══ 페이지 이동 ═══ */
 function goPage(pg,el){
