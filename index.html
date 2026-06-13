@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
 :root{--p:#4a6fa5;--pl:#6b8fc4;--ac:#e8913a;--bg:#f5f7fa;--c:#fff;--t:#2c3e50;--tl:#7f8c8d;--inc:#27ae60;--exp:#e74c3c;--sav:#3498db;--bd:#e0e6ed;--sw:255px}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -128,10 +129,7 @@ td.amt{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
   <div class="ag-logo">🐶</div>
   <h2>강쥐들의 가계부</h2>
   <p>허락된 구글 계정만 들어올 수 있어요.<br>본인 구글 계정으로 로그인해 주세요.</p>
-  <button class="gbtn" id="googleLoginBtn" onclick="doGoogleLogin()">
-    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
-    구글 계정으로 로그인
-  </button>
+  <div id="gsiButton" style="display:flex;justify-content:center;min-height:44px"></div>
   <div class="ag-msg" id="authMsg"></div>
   <button class="ag-sub" id="authSwitchBtn" onclick="doLogout()" style="display:none">다른 계정으로 로그인</button>
 </div>
@@ -436,22 +434,39 @@ var IS_OWNER=false;
 var listenersStarted=false;
 function emailKey(e){return String(e).toLowerCase().trim().replace(/\./g,',');}  // 이메일을 DB 키로 변환
 
-function doGoogleLogin(){
-  var provider=new firebase.auth.GoogleAuthProvider();
-  $('authMsg').textContent='로그인 창을 여는 중...';
-  auth.signInWithPopup(provider).catch(function(err){
-    if(err&&err.code==='auth/popup-blocked'){auth.signInWithRedirect(provider);return;}
+/* 구글 로그인 (GIS 방식: accounts.google.com 으로 직접 통신 → 방화벽 우회) */
+var GIS_CLIENT_ID='264965329371-ivfa61qcv81619t8vr42hpvcb0bg5mv5.apps.googleusercontent.com';
+var gisRendered=false;
+function onGisCredential(response){
+  $('authMsg').textContent='로그인 처리 중...';
+  var cred=firebase.auth.GoogleAuthProvider.credential(response.credential);
+  auth.signInWithCredential(cred).catch(function(err){
     $('authMsg').textContent='로그인에 실패했어요: '+(err&&err.message?err.message:err);
   });
 }
-function doLogout(){auth.signOut();}
+function initGis(){
+  if(gisRendered)return;
+  if(window.google&&google.accounts&&google.accounts.id){
+    google.accounts.id.initialize({client_id:GIS_CLIENT_ID,callback:onGisCredential});
+    google.accounts.id.renderButton($('gsiButton'),{theme:'filled_blue',size:'large',text:'signin_with',shape:'pill',locale:'ko',width:260});
+    gisRendered=true;
+  }else{
+    setTimeout(initGis,300);  // 라이브러리 로딩 대기
+  }
+}
+initGis();
+
+function doLogout(){
+  if(window.google&&google.accounts&&google.accounts.id){google.accounts.id.disableAutoSelect();}
+  auth.signOut();
+}
 
 auth.onAuthStateChanged(function(user){
   var gate=$('authGate');
   if(!user){
     CUR_USER=null;IS_OWNER=false;
     gate.classList.remove('hide');
-    $('googleLoginBtn').style.display='';
+    $('gsiButton').style.display='flex';
     $('authSwitchBtn').style.display='none';
     $('authMsg').textContent='';
     return;
@@ -466,7 +481,7 @@ auth.onAuthStateChanged(function(user){
   checkAllowed.then(function(ok){
     if(!ok){
       // 로그인은 했지만 허용 명단에 없음
-      $('googleLoginBtn').style.display='none';
+      $('gsiButton').style.display='none';
       $('authSwitchBtn').style.display='';
       $('authMsg').innerHTML='⛔ <b>'+user.email+'</b> 계정은 접근 권한이 없어요.<br>주인장에게 등록을 요청하세요.';
       return;
